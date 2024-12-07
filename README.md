@@ -1,28 +1,28 @@
-#Project Description:
+# Project Description:
 I utilized two deep learning image detection algorithms, YOLO (You Only Look Once) and R-CNN (Region-based Convolutional Neural Network), along with one non-deep learning algorithm, ORB (Oriented FAST and Rotated BRIEF), to detect objects and keypoints in images. YOLO’s main advantage lies in its speed and ability to perform real-time object detection, but it has limitations in handling small objects or overlapping detections in complex scenes. R-CNN, on the other hand, produced more accurate results due to its ability to focus on regions of interest and perform finer-grained detections, though it requires significantly more computational resources and time for processing.
 
 The non-deep learning algorithm, ORB, is effective at finding keypoints and descriptors, which can be used for tasks like object recognition or image matching. Additionally, ORB provides valuable metadata, including location, scale, and orientation, to help analyze image features. To synthesize the findings, I summarized and compared the performance of the YOLO and R-CNN models through visualizations, offering clearer insights into their strengths, weaknesses, and overall effectiveness.
 
-
+## Libraries imported
 from ultralytics import YOLO
 from PIL import Image
 import os
 
 pip install ultralytics
 
+## model used
 model = YOLO("yolov8m.pt")
 
 import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 
-# Define the folder path
+#folder path
 folder_path = '/Users/carlosvelazquez/Desktop/MSBA/Analytical Programming II/images'
 
-# Initialize a list to store results for the DataFrame
 data = []
 
-# Iterate through all images in the folder
+
 for filename in os.listdir(folder_path):
     if filename.endswith(('.png', '.jpg', '.jpeg')):  # Ensure it's an image file
         image_path = os.path.join(folder_path, filename)
@@ -54,14 +54,11 @@ for filename in os.listdir(folder_path):
                     "Probability": probability
                 })
 
-# Create the DataFrame
 yolo_results = pd.DataFrame(data)
 
-# Save the DataFrame to a CSV file
 csv_save_path = os.path.join(folder_path, "predictions_results.csv")
 yolo_results.to_csv(csv_save_path, index=False)
 
-# Print the DataFrame to console
 print("Predictions Results:")
 yolo_results
 
@@ -82,25 +79,19 @@ weights = FasterRCNN_ResNet50_FPN_Weights.DEFAULT
 model = detection.fasterrcnn_resnet50_fpn(weights=weights)
 model.eval()
 
-# Dynamically fetch COCO class names
 COCO_CLASSES = weights.meta["categories"]
 
-# Path to the folder containing the images
 folder_path = '/Users/carlosvelazquez/Desktop/MSBA/Analytical Programming II/images'
 
-# Ensure the input folder exists
 if not os.path.exists(folder_path):
     print(f"Folder '{folder_path}' does not exist!")
     exit()
 
-# Confidence threshold for filtering predictions
 confidence_threshold = 0.5
 
-# List to store results for the DataFrame
 results_list = []
 
 for filename in os.listdir(folder_path):
-    # Construct the full path to the image
     image_path = os.path.join(folder_path, filename)
 
     if not filename.lower().endswith(('.jpg', '.jpeg', '.png')):
@@ -108,21 +99,17 @@ for filename in os.listdir(folder_path):
 
     print(f"Processing image: {image_path}")
 
-    # Step 2: Load the image
     try:
         image = Image.open(image_path).convert('RGB')  # Ensure the image is in RGB format
     except Exception as e:
         print(f"Error loading image {filename}: {e}")
         continue
 
-    # Convert the image to a tensor
     image_tensor = F.to_tensor(image)
 
-    # Step 3: Perform object detection
     with torch.no_grad():
         predictions = model([image_tensor])
 
-    # Step 4: Extract and filter predictions
     predicted_boxes = predictions[0]['boxes']
     predicted_scores = predictions[0]['scores']
     predicted_labels = predictions[0]['labels']
@@ -142,7 +129,6 @@ for filename in os.listdir(folder_path):
                 "Probability": probability
             })
 
-    # Optional: Display the image with annotations
     fig, ax = plt.subplots(1, figsize=(12, 8), dpi=72)
     ax.imshow(image)
 
@@ -162,7 +148,6 @@ for filename in os.listdir(folder_path):
             )
             ax.add_patch(rect)
 
-            # Add the class name and score as text
             ax.text(
                 x_min,
                 y_min - 5,
@@ -175,7 +160,6 @@ for filename in os.listdir(folder_path):
     plt.axis("off")  # Hide axes for better visualization
     plt.show()
 
-# Step 5: Create a DataFrame from the results list
 rnn_results = pd.DataFrame(results_list)
 
 rnn_results
@@ -186,38 +170,29 @@ import cv2
 import os
 import pandas as pd
 
-# Define the folder path containing the images
 folder_path = '/Users/carlosvelazquez/Desktop/MSBA/Analytical Programming II/images'
 
-# Initialize a list to hold the metadata for all images
 keypoint_data = []
 
-# Iterate through all image files in the folder
 for filename in os.listdir(folder_path):
     if filename.endswith(('.png', '.jpg', '.jpeg')):  # Process only image files
         # Construct the full path to the image
         image_path = os.path.join(folder_path, filename)
         
-        # Read the image
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)  # ORB works with grayscale images
         
-        # Initialize the ORB detector with a higher nfeatures limit
         orb = cv2.ORB_create(nfeatures=500)
         
-        # Detect keypoints and compute descriptors
         keypoints, descriptors = orb.detectAndCompute(image, None)
         
-                # Draw keypoints on the image
         image_with_keypoints = cv2.drawKeypoints(image, keypoints, None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         
-        # Display the image with keypoints
         plt.figure(figsize=(8, 8))
         plt.imshow(image_with_keypoints, cmap='gray')
         plt.title(f"ORB Features - {filename}")
         plt.axis('off')
         plt.show()
         
-        # Collect metadata for each keypoint
         for i, keypoint in enumerate(keypoints):
             keypoint_data.append({
                 "Image": filename,
@@ -228,10 +203,8 @@ for filename in os.listdir(folder_path):
 
             })
 
-# Convert the metadata to a DataFrame
 df_keypoints = pd.DataFrame(keypoint_data)
 
-# Display the DataFrame
 print(df_keypoints)
 
 
@@ -241,14 +214,12 @@ yolo_results["below_90_percent"] = (yolo_results["Probability"] <= 0.90).astype(
 
 yolo_counts = yolo_results.groupby(["Filename", "Object Type"]).size().reset_index(name="Count")
 
-# Calculate the sum of the 'above_90_percent' column
 sum_above_90 = yolo_results['above_90_percent'].sum()
 sum_below_90 = yolo_results['below_90_percent'].sum()
 sum_count_yolo = yolo_counts['Count'].sum()
 unique_object_types = yolo_counts['Object Type'].unique()
 num_unique_objects = len(unique_object_types)
 
-# Print the results
 print(f"Sum of 'above_90_percent': {sum_above_90}")
 print(f"Sum of 'below_90_percent': {sum_below_90}")
 print(f"Sum of 'Objects Noticed': {sum_count_yolo}")
@@ -267,14 +238,12 @@ rnn_results["below_90_percent"] = (rnn_results["Probability"] <= 0.90).astype(in
 
 rnn_counts = rnn_results.groupby(["Filename", "Object Type"]).size().reset_index(name="Count")
 
-# Calculate the sum of the 'above_90_percent' column
 sum_above_90 = rnn_results['above_90_percent'].sum()
 sum_below_90 = rnn_results['below_90_percent'].sum()
 sum_count_yolo = rnn_counts['Count'].sum()
 unique_object_types = rnn_counts['Object Type'].unique()
 num_unique_objects = len(unique_object_types)
 
-# Print the results
 print(f"Sum of 'above_90_percent': {sum_above_90}")
 print(f"Sum of 'below_90_percent': {sum_below_90}")
 print(f"Sum of 'Objects Noticed': {sum_count_yolo}")
@@ -302,7 +271,6 @@ both_summary
 
 import matplotlib.pyplot as plt
 
-# Loop through all columns in the DataFrame except the first one (e.g., 'Model')
 for column in both_summary.columns[1:]:
     plt.figure(figsize=(8, 5))
     
